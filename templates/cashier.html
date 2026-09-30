@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kedai Tedhuh - Kasir & Kitchen POS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c86d51'><path d='M2 21h18v-2H2M20 8h-2V5h2m0-2H4v10a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-3h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z'/></svg>">
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- TOP BAR -->
+  <header class="bg-[#1F150C] border-b border-[#362414] sticky top-0 z-40">
+    <!-- Waiter Calls Alert Strip -->
+    <div id="waiter-calls-container"></div>
+
+    <div class="px-5 py-3 flex items-center justify-between flex-wrap gap-3">
+      <!-- Brand & Status -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl overflow-hidden shadow-md border border-[#EED7AE]/40 flex-shrink-0 bg-[#FFEFCB] flex items-center justify-center">
+          <img src="/static/img/logo.png" alt="Kedai Tedhuh Logo" class="w-full h-full object-cover">
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-base text-[#FFEFCB] tracking-wide font-serif-title">Kedai Tedhuh POS</h1>
+            <span class="text-[10px] font-bold bg-[#C8822A]/20 text-[#FFEFCB] border border-[#C8822A]/40 px-2 py-0.5 rounded-full uppercase">Kasir & Barista</span>
+          </div>
+          <p class="text-xs text-[#EED7AE]/80">Sistem Kasir Terintegrasi Real-time</p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="hidden lg:flex items-center gap-4 text-xs font-semibold">
+        <div class="bg-stone-800 px-3.5 py-1.5 rounded-xl border border-stone-700/80 flex items-center gap-2">
+          <span class="text-stone-400">Omset Hari Ini:</span>
+          <span id="stat-today-revenue" class="text-emerald-400 font-black text-sm">Rp 0</span>
+        </div>
+        <div class="bg-stone-800 px-3.5 py-1.5 rounded-xl border border-stone-700/80 flex items-center gap-2">
+          <span class="text-stone-400">Pesanan Baru:</span>
+          <span id="stat-pending-orders" class="text-amber-400 font-black text-sm">0</span>
+        </div>
+        <div class="bg-stone-800 px-3.5 py-1.5 rounded-xl border border-stone-700/80 flex items-center gap-2">
+          <span class="text-stone-400">Sedang Dibuat:</span>
+          <span id="stat-cooking-orders" class="text-blue-400 font-black text-sm">0</span>
+        </div>
+      </div>
+
+      <!-- User Profile Badge & Controls -->
+      <div class="flex items-center gap-3">
+        <!-- User Badge -->
+        <div id="header-user-badge">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Live SSE indicator -->
+        <div id="connection-status" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Online</span>
+        </div>
+
+        <!-- Audio toggle & test -->
+        <button id="btn-audio-toggle" onclick="CashierApp.toggleAudio()" 
+          title="Nyalakan / Matikan Suara Bel Pesanan"
+          class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-3 py-1.5 rounded-xl border border-stone-700 text-xs font-semibold flex items-center gap-1.5 transition">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+          <span class="hidden sm:inline">Bel</span>
+        </button>
+
+        <button onclick="CashierApp.testSound()" 
+          title="Tes Suara Bel"
+          class="bg-stone-800 hover:bg-stone-700 text-stone-300 p-2 rounded-xl border border-stone-700 transition"
+          aria-label="Test Sound">
+          🔔
+        </button>
+
+        <!-- Printer Thermal Quick Button -->
+        <button onclick="CashierApp.openPrinterModal()" 
+          title="Pengaturan Koneksi Printer Thermal"
+          class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold px-3 py-1.5 rounded-xl border border-stone-700 transition flex items-center gap-1.5 shadow-sm">
+          <span>🖨️ Printer Thermal</span>
+          <span id="printer-status-dot" class="w-2 h-2 rounded-full bg-emerald-400" title="Printer Siap"></span>
+        </button>
+
+        <!-- Customer Menu Link -->
+        <a href="/" target="_blank" 
+          class="bg-[#472E0B] hover:bg-[#5C3C10] text-[#FFEFCB] text-xs font-bold px-3 py-1.5 rounded-xl transition border border-[#5C3C10] flex items-center gap-1">
+          <span>Menu HP</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <div class="px-5 border-t border-stone-800 bg-stone-900/80 flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+      <button onclick="CashierApp.switchTab('live-orders')" data-tab="live-orders" 
+        class="pos-nav-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-[#C8822A] text-white shadow-md">
+        <span>📋 Pesanan Masuk (Live)</span>
+        <span id="badge-pending-count" class="bg-amber-400 text-stone-950 text-[10px] font-black px-1.5 py-0.2 rounded-full hidden">0</span>
+      </button>
+
+      <button onclick="CashierApp.switchTab('walk-in')" data-tab="walk-in" 
+        class="pos-nav-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-stone-300 hover:bg-stone-800">
+        <span>🖥️ Kasir Walk-In (POS Cepat)</span>
+      </button>
+
+      <button onclick="CashierApp.switchTab('tables')" data-tab="tables" 
+        class="pos-nav-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-stone-300 hover:bg-stone-800">
+        <span>🪑 Denah Meja (12 Meja)</span>
+      </button>
+
+      <button id="tab-btn-stock" onclick="CashierApp.switchTab('stock')" data-tab="stock" 
+        class="pos-nav-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-stone-300 hover:bg-stone-800" style="display: none;">
+        <span>📦 Kelola Menu & Kategori</span>
+      </button>
+
+      <button id="tab-btn-reports" onclick="CashierApp.switchTab('reports')" data-tab="reports" 
+        class="pos-nav-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-stone-300 hover:bg-stone-800" style="display: none;">
+        <span>📊 Laporan Bulanan & Excel</span>
+      </button>
+
+      <!-- Admin Tab: Users -->
+      <button id="tab-btn-users" onclick="CashierApp.switchTab('users')" data-tab="users" 
+        class="pos-nav-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-stone-300 hover:bg-stone-800" style="display: none;">
+        <span>👥 Kelola Staff (Users)</span>
+      </button>
+
+      <a href="/kasir/cetak-qr" target="_blank" 
+        class="px-4 py-2 rounded-xl text-xs font-bold text-stone-300 hover:bg-stone-800 hover:text-white transition flex items-center gap-1.5 ml-auto">
+        <span>🖨️ Cetak QR Meja</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN POS WORKSPACE -->
+  <main class="flex-1 p-4 lg:p-6 max-w-[1600px] w-full mx-auto">
+    <div id="tab-content" class="h-full">
+      <!-- Dynamically filled by cashier.js -->
+    </div>
+  </main>
+
+  <!-- LOGIN & PIN MODAL -->
+  <div id="login-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-stone-900 border border-[#362414] rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 rounded-2xl overflow-hidden shadow-lg border border-[#EED7AE]/40 mx-auto mb-3 bg-[#FFEFCB] flex items-center justify-center">
+          <img src="/static/img/logo.png" alt="Kedai Tedhuh" class="w-full h-full object-cover">
+        </div>
+        <h2 class="text-xl font-extrabold text-[#FFEFCB] font-serif-title">Masuk Sistem Kasir</h2>
+        <p class="text-xs text-[#EED7AE]/80 mt-1">Kedai Tedhuh - Autentikasi Kasir & Staff</p>
+      </div>
+
+      <div id="login-error-msg" class="hidden mb-4 p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-xs font-bold text-red-300 text-center">
+        PIN atau password salah
+      </div>
+
+      <!-- Manual PIN Input with Virtual Keypad -->
+      <div class="mb-3">
+        <label class="block text-xs font-bold text-stone-300 uppercase tracking-wider mb-2 text-center">
+          Masukkan PIN Staff (4-Digit):
+        </label>
+        <div class="relative">
+          <input type="password" id="login-pin-input" maxlength="6" placeholder="• • • •" 
+            onkeyup="if(event.key==='Enter') CashierApp.submitLogin()"
+            class="w-full bg-stone-950 text-center tracking-widest text-3xl font-mono text-white py-3 rounded-2xl border border-stone-700 focus:outline-none focus:border-[#C8822A] shadow-inner">
+          <button type="button" onclick="CashierApp.clearLoginPin()" 
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-200 text-xs font-bold px-2 py-1 rounded-lg bg-stone-800 border border-stone-700">
+            Hapus
+          </button>
+        </div>
+      </div>
+
+      <!-- Numeric Keypad for Touch & Quick Mouse Entry -->
+      <div class="grid grid-cols-3 gap-2 mb-4">
+        <button type="button" onclick="CashierApp.appendLoginPin('1')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">1</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('2')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">2</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('3')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">3</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('4')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">4</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('5')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">5</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('6')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">6</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('7')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">7</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('8')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">8</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('9')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">9</button>
+        <button type="button" onclick="CashierApp.clearLoginPin()" class="py-3 rounded-xl bg-red-950/40 hover:bg-red-900/50 text-red-400 font-bold text-xs border border-red-900/50 active:scale-95 transition">Hapus</button>
+        <button type="button" onclick="CashierApp.appendLoginPin('0')" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-base border border-stone-700 active:scale-95 transition">0</button>
+        <button type="button" onclick="CashierApp.backspaceLoginPin()" class="py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-base border border-stone-700 active:scale-95 transition">⌫</button>
+      </div>
+
+      <button onclick="CashierApp.submitLogin()" 
+        class="w-full bg-[#472E0B] hover:bg-[#5C3C10] text-[#FFEFCB] font-extrabold text-sm py-3 rounded-xl shadow-lg transition active:scale-[0.98] border border-[#5C3C10]">
+        Masuk Kasir
+      </button>
+
+      <!-- Toggle Username/Password Option -->
+      <details class="mt-4 text-xs text-stone-400">
+        <summary class="cursor-pointer hover:text-stone-300 text-center text-[11px]">Masuk menggunakan Username & Password</summary>
+        <div class="mt-3 space-y-2 p-3 bg-stone-950 rounded-xl border border-stone-800">
+          <input type="text" id="login-user-input" placeholder="Username (misal: admin)" class="w-full bg-stone-800 text-white text-xs p-2 rounded-lg border border-stone-700">
+          <input type="password" id="login-pass-input" placeholder="Password (misal: admin123)" class="w-full bg-stone-800 text-white text-xs p-2 rounded-lg border border-stone-700">
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- USER / STAFF FORM MODAL (Admin) -->
+  <div id="user-form-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+      <div class="flex justify-between items-center pb-4 mb-4 border-b border-stone-800">
+        <h3 id="user-form-title" class="text-base font-extrabold text-white">Tambah Staff Kasir Baru</h3>
+        <button onclick="CashierApp.closeUserFormModal()" class="text-stone-400 hover:text-stone-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <input type="hidden" id="user-form-id">
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">Nama Lengkap Staff</label>
+          <input type="text" id="user-form-fullname" placeholder="Misal: Siti Rahma" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+        </div>
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">Username Login</label>
+          <input type="text" id="user-form-username" placeholder="Misal: kasir2" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+        </div>
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">Role / Peran</label>
+          <select id="user-form-role" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+            <option value="kasir">Kasir (Walk-in, Live Orders, Struk)</option>
+            <option value="barista">Barista / Dapur (Kitchen Display)</option>
+            <option value="admin">Admin / Owner (Semua Fitur + Laporan + Kelola Staff)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">PIN Cepat (4-Digit Angka)</label>
+          <input type="text" id="user-form-pin" maxlength="6" placeholder="Misal: 1111" class="w-full bg-stone-800 font-mono text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+        </div>
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">Password (Opsional jika pakai PIN)</label>
+          <input type="password" id="user-form-password" placeholder="Kosongkan jika tidak diubah" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-2">
+        <button onclick="CashierApp.closeUserFormModal()" class="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs py-2.5 rounded-xl">
+          Batal
+        </button>
+        <button onclick="CashierApp.saveUserForm()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-md">
+          Simpan Staff
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU EDIT & ADD MODAL (Admin) -->
+  <div id="menu-form-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center pb-3 mb-4 border-b border-stone-800">
+        <div>
+          <h3 id="menu-form-title" class="text-base font-extrabold text-white">Tambah Menu Baru</h3>
+          <p class="text-[11px] text-stone-400">Atur rincian menu, harga, badge dan opsi kustomisasi</p>
+        </div>
+        <button onclick="CashierApp.closeMenuFormModal()" class="text-stone-400 hover:text-stone-200 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <input type="hidden" id="menu-form-id">
+      <div class="space-y-3.5 text-xs overflow-y-auto pr-1 flex-1">
+        <!-- Nama Menu -->
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">Nama Menu <span class="text-red-400">*</span></label>
+          <input type="text" id="menu-form-name" placeholder="Misal: Es Kopi Susu Aren" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+        </div>
+
+        <!-- 2 cols: Kategori & Harga -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-stone-300 font-bold mb-1">Kategori Menu <span class="text-red-400">*</span></label>
+            <select id="menu-form-category" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+              <!-- Filled dynamically by JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-stone-300 font-bold mb-1">Harga Jual (Rp) <span class="text-red-400">*</span></label>
+            <input type="number" id="menu-form-price" placeholder="20000" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+          </div>
+        </div>
+
+        <!-- Badge & Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-stone-300 font-bold mb-1">Badge / Tag Khusus</label>
+            <select id="menu-form-badge" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+              <option value="">(Tanpa Tag)</option>
+              <option value="Best Seller">🔥 Best Seller</option>
+              <option value="Signature">✨ Signature</option>
+              <option value="Rekomendasi">⭐ Rekomendasi</option>
+              <option value="Favorit">❤️ Favorit</option>
+              <option value="Baru">🆕 Menu Baru</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-stone-300 font-bold mb-1">Status Ketersediaan</label>
+            <select id="menu-form-available" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+              <option value="1">✅ Tersedia (Ready Stock)</option>
+              <option value="0">❌ Habis Terjual (Sold Out)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- URL Gambar + Preset Cepat -->
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">URL Foto Menu</label>
+          <input type="text" id="menu-form-image" placeholder="https://images.unsplash.com/..." class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+          <div class="mt-1.5 flex items-center gap-1.5 flex-wrap text-[10px] text-stone-400">
+            <span>Pilihan Foto Cepat:</span>
+            <button type="button" onclick="CashierApp.setMenuPresetImage('coffee')" class="bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-0.5 rounded border border-stone-700">☕ Kopi</button>
+            <button type="button" onclick="CashierApp.setMenuPresetImage('tea')" class="bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-0.5 rounded border border-stone-700">🍵 Teh/Non-Kopi</button>
+            <button type="button" onclick="CashierApp.setMenuPresetImage('food')" class="bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-0.5 rounded border border-stone-700">🍽️ Makanan</button>
+            <button type="button" onclick="CashierApp.setMenuPresetImage('pastry')" class="bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-0.5 rounded border border-stone-700">🥐 Pastry</button>
+            <button type="button" onclick="CashierApp.setMenuPresetImage('mocktail')" class="bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-0.5 rounded border border-stone-700">🍹 Mocktail</button>
+          </div>
+        </div>
+
+        <!-- Deskripsi -->
+        <div>
+          <label class="block text-stone-300 font-bold mb-1">Deskripsi Singkat</label>
+          <textarea id="menu-form-desc" rows="2" placeholder="Komposisi atau keunikan rasa menu..." class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]"></textarea>
+        </div>
+
+        <!-- Opsi Suhu & Gula -->
+        <div class="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-2">
+          <span class="block font-bold text-stone-300 text-[11px] uppercase tracking-wider">Opsi Pilihan Pelanggan (Self-Order)</span>
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="menu-form-icehot" class="rounded border-stone-700 text-[#C8822A] focus:ring-[#C8822A]">
+              <span class="text-stone-300">Pilihan Es / Panas (Ice/Hot)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="menu-form-sugar" class="rounded border-stone-700 text-[#C8822A] focus:ring-[#C8822A]">
+              <span class="text-stone-300">Pilihan Level Gula</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 pt-3 border-t border-stone-800 flex gap-2">
+        <button onclick="CashierApp.closeMenuFormModal()" class="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs py-2.5 rounded-xl">
+          Batal
+        </button>
+        <button onclick="CashierApp.saveMenuForm()" class="flex-1 bg-[#472E0B] hover:bg-[#5C3C10] text-[#FFEFCB] font-extrabold text-xs py-2.5 rounded-xl shadow-md border border-[#5C3C10]">
+          Simpan Menu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY MANAGEMENT MODAL (Admin) -->
+  <div id="category-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center pb-3 mb-4 border-b border-stone-800">
+        <div>
+          <h3 class="text-base font-extrabold text-white">📁 Kelola Kategori Menu</h3>
+          <p class="text-[11px] text-stone-400">Atur grup kategori menu untuk tampilan di kasir dan pelanggan</p>
+        </div>
+        <button onclick="CashierApp.closeCategoryModal()" class="text-stone-400 hover:text-stone-200 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Form Tambah / Edit Kategori -->
+      <div class="bg-stone-950 p-4 rounded-2xl border border-stone-800 mb-4 text-xs">
+        <input type="hidden" id="category-form-id">
+        <h4 id="category-form-title" class="font-bold text-stone-200 mb-2">Tambah Kategori Baru</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-2">
+          <div class="sm:col-span-6">
+            <input type="text" id="category-form-name" placeholder="Nama Kategori..." class="w-full bg-stone-800 text-white p-2 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+          </div>
+          <div class="sm:col-span-4">
+            <select id="category-form-icon" class="w-full bg-stone-800 text-white p-2 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+              <option value="coffee">☕ Kopi & Espresso</option>
+              <option value="sparkles">✨ Signature</option>
+              <option value="cup-soda">🥤 Non-Kopi & Teh</option>
+              <option value="utensils">🍽️ Makanan Utama</option>
+              <option value="croissant">🥐 Camilan & Pastry</option>
+              <option value="glass-water">🍹 Mocktail & Soda</option>
+              <option value="tea">🍵 Aneka Teh</option>
+              <option value="bread">🥪 Roti / Toast</option>
+              <option value="ice-cream">🍨 Dessert</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <input type="number" id="category-form-order" placeholder="Urutan" title="Urutan tampilan" value="1" class="w-full bg-stone-800 text-white p-2 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A] text-center">
+          </div>
+        </div>
+        <div class="flex gap-2 justify-end">
+          <button id="btn-cancel-cat-edit" onclick="CashierApp.resetCategoryForm()" class="bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold px-3 py-1.5 rounded-xl hidden">
+            Batal
+          </button>
+          <button onclick="CashierApp.saveCategoryForm()" class="bg-[#C8822A] hover:bg-[#A06218] text-white font-bold px-4 py-1.5 rounded-xl shadow-sm">
+            Simpan Kategori
+          </button>
+        </div>
+      </div>
+
+      <!-- List of Existing Categories -->
+      <div class="flex-1 overflow-y-auto border border-stone-800 rounded-xl">
+        <table class="w-full text-left text-xs text-stone-300">
+          <thead class="bg-stone-800/80 uppercase text-[10px] font-bold text-stone-400 sticky top-0">
+            <tr>
+              <th class="p-2.5">Kategori</th>
+              <th class="p-2.5 text-center">Urutan</th>
+              <th class="p-2.5 text-center">Total Menu</th>
+              <th class="p-2.5 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="category-table-body" class="divide-y divide-stone-800">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-stone-800 text-right">
+        <button onclick="CashierApp.closeCategoryModal()" class="bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs px-5 py-2 rounded-xl">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THERMAL PRINTER SETTINGS MODAL -->
+  <div id="printer-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center pb-3 mb-4 border-b border-stone-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-[#C8822A] flex items-center justify-center text-lg border border-amber-500/20">
+            🖨️
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-white">Pengaturan Printer Thermal Struk</h3>
+            <p class="text-[11px] text-stone-400">Konfigurasi koneksi printer struk kasir (USB, Bluetooth, atau LAN)</p>
+          </div>
+        </div>
+        <button onclick="CashierApp.closePrinterModal()" class="text-stone-400 hover:text-stone-200 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
+        <!-- Live Connection Status Banner -->
+        <div id="printer-status-banner" class="p-3.5 rounded-2xl bg-stone-950 border border-stone-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span id="printer-status-icon" class="text-2xl">🟢</span>
+            <div>
+              <div id="printer-status-title" class="font-extrabold text-white text-xs">Driver Browser / Windows Siap</div>
+              <div id="printer-status-desc" class="text-[11px] text-stone-400">Kompatibel dengan semua printer USB & thermal driver</div>
+            </div>
+          </div>
+          <span id="printer-status-tag" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            Siap Digunakan
+          </span>
+        </div>
+
+        <!-- 1. METODE KONEKSI PRINTER -->
+        <div>
+          <label class="block text-stone-300 font-bold mb-2 uppercase tracking-wider text-[11px]">1. Pilih Jalur Koneksi Printer:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <!-- Option 1: Browser Dialog / Driver Windows -->
+            <label class="printer-conn-option cursor-pointer p-3 rounded-2xl border transition flex flex-col justify-between"
+              id="opt-conn-browser" onclick="CashierApp.selectPrinterConn('browser')">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base">🔌</span>
+                <input type="radio" name="printer_conn" value="browser" class="text-[#C8822A]">
+              </div>
+              <div class="font-bold text-white text-xs">Driver USB / Browser</div>
+              <div class="text-[10px] text-stone-400 mt-1">Driver printer Windows / kabel USB bawaan</div>
+            </label>
+
+            <!-- Option 2: Direct Web Bluetooth -->
+            <label class="printer-conn-option cursor-pointer p-3 rounded-2xl border transition flex flex-col justify-between"
+              id="opt-conn-bluetooth" onclick="CashierApp.selectPrinterConn('bluetooth')">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base">📶</span>
+                <input type="radio" name="printer_conn" value="bluetooth" class="text-[#C8822A]">
+              </div>
+              <div class="font-bold text-white text-xs">Web Bluetooth (BLE)</div>
+              <div class="text-[10px] text-stone-400 mt-1">Nirkabel langsung tanpa instal driver (Chrome/Android)</div>
+            </label>
+
+            <!-- Option 3: Network / LAN IP -->
+            <label class="printer-conn-option cursor-pointer p-3 rounded-2xl border transition flex flex-col justify-between"
+              id="opt-conn-network" onclick="CashierApp.selectPrinterConn('network')">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base">🌐</span>
+                <input type="radio" name="printer_conn" value="network" class="text-[#C8822A]">
+              </div>
+              <div class="font-bold text-white text-xs">Network LAN / IP</div>
+              <div class="text-[10px] text-stone-400 mt-1">Kabel LAN / Wi-Fi port 9100 (Printer Dapur/Meja)</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- BLUETOOTH CONTROL PANEL (Shows when bluetooth selected) -->
+        <div id="panel-conn-bluetooth" class="p-3.5 bg-stone-950 rounded-2xl border border-stone-800 space-y-2.5 hidden">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-bold text-white">Koneksi Bluetooth Langsung (Web Bluetooth)</div>
+              <div id="bluetooth-device-info" class="text-[11px] text-stone-400">Belum ada printer Bluetooth terhubung</div>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="CashierApp.connectBluetoothPrinter()" class="bg-[#C8822A] hover:bg-[#A06218] text-white font-bold px-3 py-1.5 rounded-xl transition text-xs shadow-sm flex items-center gap-1">
+                <span>🔗 Scan Bluetooth</span>
+              </button>
+              <button type="button" id="btn-disconnect-bt" onclick="CashierApp.disconnectBluetoothPrinter()" class="bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold px-3 py-1.5 rounded-xl transition text-xs border border-stone-700 hidden">
+                Putuskan
+              </button>
+            </div>
+          </div>
+          <div class="text-[10px] text-stone-500 bg-stone-900/80 p-2 rounded-xl border border-stone-800">
+            💡 <strong>Tips:</strong> Nyalakan printer Bluetooth Anda dan pastikan Bluetooth di laptop/tablet aktif. Gunakan Google Chrome atau Microsoft Edge untuk pairing langsung.
+          </div>
+        </div>
+
+        <!-- NETWORK IP CONTROL PANEL (Shows when network selected) -->
+        <div id="panel-conn-network" class="p-3.5 bg-stone-950 rounded-2xl border border-stone-800 space-y-2.5 hidden">
+          <div class="font-bold text-white">Pengaturan Alamat IP Printer LAN / Wi-Fi</div>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+            <div class="sm:col-span-8">
+              <label class="block text-stone-400 text-[10px] mb-1 font-bold">IP Address Printer</label>
+              <input type="text" id="setting-printer-ip" placeholder="Misal: 192.168.1.200" class="w-full bg-stone-800 text-white p-2 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-stone-400 text-[10px] mb-1 font-bold">Port (Default 9100)</label>
+              <input type="number" id="setting-printer-port" value="9100" class="w-full bg-stone-800 text-white p-2 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button type="button" onclick="CashierApp.testNetworkPrinter()" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold px-3 py-1.5 rounded-xl text-xs">
+              🧪 Tes Ping Socket
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. PENGATURAN KERTAS & STRUK -->
+        <div>
+          <label class="block text-stone-300 font-bold mb-2 uppercase tracking-wider text-[11px]">2. Format Struk & Ukuran Kertas:</label>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="cursor-pointer p-3 rounded-2xl border border-stone-700 bg-stone-950 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-white text-xs">Kertas 58mm</div>
+                <div class="text-[10px] text-stone-400">Standar 32 kolom (kasir mini)</div>
+              </div>
+              <input type="radio" name="printer_paper_width" value="58mm" class="text-[#C8822A]">
+            </label>
+
+            <label class="cursor-pointer p-3 rounded-2xl border border-stone-700 bg-stone-950 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-white text-xs">Kertas 80mm</div>
+                <div class="text-[10px] text-stone-400">Standar 48 kolom (kasir besar)</div>
+              </div>
+              <input type="radio" name="printer_paper_width" value="80mm" class="text-[#C8822A]">
+            </label>
+          </div>
+
+          <!-- Opsi Tambahan -->
+          <div class="p-3 bg-stone-950 rounded-2xl border border-stone-800 space-y-2.5">
+            <label class="flex items-center justify-between cursor-pointer">
+              <div>
+                <div class="font-bold text-white text-xs">Cetak Otomatis (Auto-Print)</div>
+                <div class="text-[10px] text-stone-400">Cetak struk secara otomatis saat pembayaran transaksi selesai</div>
+              </div>
+              <input type="checkbox" id="setting-printer-autoprint" class="rounded border-stone-700 text-[#C8822A] focus:ring-[#C8822A] scale-110">
+            </label>
+
+            <label class="flex items-center justify-between cursor-pointer pt-2 border-t border-stone-800/80">
+              <div>
+                <div class="font-bold text-white text-xs">Tampilkan Logo Kedai di Struk</div>
+                <div class="text-[10px] text-stone-400">Mencetak logo resmi Kedai Tedhuh di bagian atas struk</div>
+              </div>
+              <input type="checkbox" id="setting-receipt-logo" class="rounded border-stone-700 text-[#C8822A] focus:ring-[#C8822A] scale-110">
+            </label>
+
+            <label class="flex items-center justify-between cursor-pointer pt-2 border-t border-stone-800/80">
+              <div>
+                <div class="font-bold text-white text-xs">Perintah Potong Kertas (Auto-Cut)</div>
+                <div class="text-[10px] text-stone-400">Kirim perintah potong kertas untuk printer dengan auto-cutter</div>
+              </div>
+              <input type="checkbox" id="setting-printer-autocut" class="rounded border-stone-700 text-[#C8822A] focus:ring-[#C8822A] scale-110">
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. FOOTER PESAN STRUK -->
+        <div>
+          <label class="block text-stone-300 font-bold mb-1 uppercase tracking-wider text-[11px]">Pesan Kaki Struk (Footer):</label>
+          <input type="text" id="setting-receipt-footer" placeholder="Terima kasih atas kunjungannya!" class="w-full bg-stone-800 text-white p-2.5 rounded-xl border border-stone-700 focus:outline-none focus:border-[#C8822A]">
+        </div>
+      </div>
+
+      <!-- Modal Actions -->
+      <div class="mt-5 pt-3 border-t border-stone-800 flex items-center justify-between gap-3">
+        <button type="button" onclick="CashierApp.testPrintThermal()" 
+          class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95">
+          <span>🧪 Test Print Struk</span>
+        </button>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="CashierApp.closePrinterModal()" class="bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs px-4 py-2.5 rounded-xl">
+            Tutup
+          </button>
+          <button type="button" onclick="CashierApp.savePrinterSettings()" class="bg-[#472E0B] hover:bg-[#5C3C10] text-[#FFEFCB] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md border border-[#5C3C10] active:scale-95">
+            Simpan Pengaturan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/chime.js"></script>
+  <script src="/static/js/cashier.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      CashierApp.init();
+    });
+  </script>
+</body>
+</html>

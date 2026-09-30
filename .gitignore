@@ -1,0 +1,28 @@
+# Binaries
+heima
+heima.exe
+*.exe
+
+# Environment
+.env
+.env.local
+
+# Session & credentials — NEVER commit
+.heima/
+
+# Go
+vendor/
+*.test
+*.out
+coverage.txt
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

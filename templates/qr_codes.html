@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Cetak QR Code Meja - Kedai Tedhuh</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .qr-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="bg-stone-100 p-6 font-sans">
+
+  <!-- Control Header (Hidden when printing) -->
+  <div class="max-w-4xl mx-auto mb-8 bg-white p-6 rounded-2xl shadow-md border border-stone-200 no-print flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-extrabold text-stone-900">Cetak Kartu QR Code Meja Kedai Tedhuh</h1>
+      <p class="text-xs text-stone-500 mt-1">Kartu QR siap cetak untuk diletakkan di stand akrilik meja 1 s/d 12</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <input type="text" id="base-url-input" placeholder="http://192.168.1.XX:5000" class="text-xs border border-stone-300 rounded-xl px-3 py-2 text-stone-700 w-52" onchange="updateQrUrls()">
+      <button onclick="window.print()" class="bg-[#472E0B] hover:bg-[#5C3C10] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+        <span>🖨️ Cetak Semua QR Meja</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- QR Cards Grid (A4 / Stand size) -->
+  <div id="qr-cards-grid" class="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+    <!-- Rendered via JS -->
+  </div>
+
+  <script>
+    const baseUrl = window.location.origin;
+    document.getElementById('base-url-input').value = baseUrl;
+
+    function renderCards(currentBase) {
+      const container = document.getElementById('qr-cards-grid');
+      let html = '';
+
+      for (let i = 1; i <= 12; i++) {
+        const tableNum = `Meja ${i < 10 ? '0' + i : i}`;
+        const orderUrl = `${currentBase}/?meja=${encodeURIComponent(tableNum)}`;
+        const qrApi = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(orderUrl)}`;
+
+        html += `
+          <div class="qr-card bg-[#FFFDF8] rounded-3xl p-6 border-2 border-[#EED7AE] shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+            <!-- Brand Logo -->
+            <div class="w-14 h-14 rounded-2xl overflow-hidden shadow-md border-2 border-[#EED7AE] mb-2 bg-[#FFEFCB] flex items-center justify-center">
+              <img src="/static/img/logo.png" alt="Kedai Tedhuh" class="w-full h-full object-cover">
+            </div>
+            <h2 class="font-serif text-lg font-extrabold text-[#472E0B] tracking-wide">KEDAI TEDHUH</h2>
+            <p class="text-[10px] text-stone-500 uppercase tracking-widest font-semibold mt-0.5">Ketenangan Dalam Setiap Teguk</p>
+
+            <!-- Table Number Pill -->
+            <div class="my-4 bg-[#472E0B] text-[#FFEFCB] px-6 py-1.5 rounded-full text-base font-extrabold shadow-sm tracking-wider">
+              ${tableNum.toUpperCase()}
+            </div>
+
+            <!-- QR Code -->
+            <div class="p-3 bg-[#FFEFCB]/30 rounded-2xl border border-[#EED7AE] shadow-inner">
+              <img src="${qrApi}" alt="${tableNum}" class="w-40 h-40 object-contain rounded-lg">
+            </div>
+
+            <!-- Instructions -->
+            <div class="mt-4">
+              <p class="text-xs font-bold text-stone-800">Scan untuk Pesan di Meja</p>
+              <p class="text-[10px] text-stone-500 mt-0.5 leading-tight">Arahkan kamera HP Anda ke kode QR untuk melihat menu & langsung memesan</p>
+            </div>
+
+            <!-- WiFi Details -->
+            <div class="mt-4 pt-3 border-t border-dashed border-stone-200 w-full text-[10px] text-stone-600 flex justify-between px-2">
+              <span>📶 <strong>KedaiTedhuh_FreeWiFi</strong></span>
+              <span>🔑 <strong>kopitedhuh2026</strong></span>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function updateQrUrls() {
+      const val = document.getElementById('base-url-input').value.trim() || window.location.origin;
+      renderCards(val);
+    }
+
+    renderCards(baseUrl);
+  </script>
+</body>
+</html>

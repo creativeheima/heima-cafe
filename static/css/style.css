@@ -1,0 +1,119 @@
+/* ==============================================================
+   KEDAI TEDHUH - DESIGN SYSTEM & THEME
+   Brand Palette:
+   - Primary Deep Coffee Espresso: #472E0B, #5C3C10
+   - Signature Buttercream:        #FFEFCB, #FBF3DF
+   - Warm Honey Amber Accent:     #C8822A, #DC963C
+   - Clean Cream Card:            #FFFDF8
+   - Borders:                     #EED7AE, #E2C99D
+   ============================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
+:root {
+  --color-primary: #472E0B;
+  --color-primary-light: #644111;
+  --color-primary-dark: #322007;
+  --color-accent: #C8822A;
+  --color-accent-light: #DC963C;
+  --color-cream: #FFEFCB;
+  --color-bg: #FBF3DF;
+  --color-card-bg: #FFFDF8;
+  --color-text-dark: #472E0B;
+  --color-text-muted: #7A664A;
+  --color-border: #EED7AE;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-dark);
+}
+
+.font-serif-title {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(71, 46, 11, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: #D9BE8E;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #BFA06C;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+@keyframes ring-bell {
+  0% { transform: rotate(0); }
+  10% { transform: rotate(14deg); }
+  20% { transform: rotate(-14deg); }
+  30% { transform: rotate(10deg); }
+  40% { transform: rotate(-10deg); }
+  50% { transform: rotate(6deg); }
+  60% { transform: rotate(-6deg); }
+  70% { transform: rotate(0); }
+  100% { transform: rotate(0); }
+}
+
+.animate-bell {
+  animation: ring-bell 1.5s infinite ease-in-out;
+  transform-origin: top center;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Thermal Printer Styling (58mm / 80mm) */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #thermal-receipt, #thermal-receipt * {
+    visibility: visible;
+  }
+  #thermal-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 58mm;
+    max-width: 58mm;
+    margin: 0;
+    padding: 3mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+    line-height: 1.25;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+  
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
